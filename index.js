@@ -11,7 +11,7 @@ const serialize = require('dom-serializer');
 const svgo = new (require('svgo'));
 const optimize = deasync(optimizeAsync);
 
-const defaultOptions = {optimize: false}
+const defaultOptions = {optimize: false, encoding: 'base64'}
 
 // exports
 module.exports = inliner;
@@ -35,9 +35,9 @@ function inliner(base, opts) {
       content = new Buffer(optimize(content).data);
 
     if(selectors && selectors.getLength && selectors.getLength())
-      return encode(changeStyle(content, selectors));
+      return encode(changeStyle(content, selectors), opts.encoding);
 
-    return encode(content);
+    return encode(content, opts.encoding);
   }
 }
 
@@ -47,9 +47,25 @@ function inliner(base, opts) {
  * @param content
  * @returns {types.String}
  */
-function encode(content){
+function encode(content, encoding){
+  var data = '';
 
-  return (new types.String('url("data:image/svg+xml;base64,'+content.toString('base64')+'")'));
+  switch (encoding) {
+    case 'uri':
+    case 'url':
+      data = ',' + encodeURIComponent(content.toString().replace(/\n+/g, ''))
+        .replace(/%20/g, ' ')
+        .replace(/%3D/g, '=')
+        .replace(/%3A/g, ':')
+        .replace(/%2F/g, '/')
+        .replace(/%22/g, "'");
+      break;
+    case 'base64':
+    default:
+      data = ';base64,' + content.toString(encoding);
+  }
+
+  return (new types.String('url("data:image/svg+xml'+data+'")'));
 }
 
 
